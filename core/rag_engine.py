@@ -1,7 +1,9 @@
 import os
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_community.document_loaders import TextLoader, PyPDFLoader
+from langchain_community.document_loaders import (
+    TextLoader, PyPDFLoader, CSVLoader, UnstructuredWordDocumentLoader, 
+    UnstructuredFileLoader)
 from langchain_openai import OpenAI
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.prompts import PromptTemplate
@@ -11,14 +13,28 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 def load_documents_from_folder(folder_path):
     all_docs=[]
     for filename in os.listdir(folder_path):
-        if filename.endswith(".pdf"):
-            path = os.path.join(folder_path, filename)
-            loader = PyPDFLoader(path)
+        path = os.path.join(folder_path,filename)
+        file_ext = os.path.splitext(filename)[1].lower()
+
+        try:
+            if file_ext == ".pdf":
+                loader = PyPDFLoader(path)
+            elif file_ext == ".txt":
+                loader = TextLoader(path)
+            elif file_ext == ".docx":
+                loader = UnstructuredWordDocumentLoader(path)
+            elif file_ext == ".csv":
+                loader = CSVLoader(path)
+            else:
+                loader = UnstructuredFileLoader(path)
+
+            docs = loader.load()
+            print(f"✅ Loaded {len(docs)} documents from {filename}")
             all_docs.extend(loader.load())
-        elif filename.endswith(".txt"):
-            path = os.path.join(folder_path, filename)
-            loader = TextLoader(path)
-            all_docs.extend(loader.load())
+
+        except Exception as e:
+            print(f" Error processing {filename}: {e}")
+
     return all_docs
 
 def format_docs(docs):

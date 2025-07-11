@@ -6,3 +6,4 @@ streamlit
 langchain-community
 pypdf
 langchain==0.1.14
+unstructured[all-docs]
