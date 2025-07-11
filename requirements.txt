@@ -1,0 +1,8 @@
+openai
+tiktoken
+chromadb
+python-dotenv
+streamlit
+langchain-community
+pypdf
+langchain==0.1.14

@@ -1,0 +1,23 @@
+# Environment file
+.env
+
+# Virtual environment
+aienv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Chroma vector database
+chroma_store/
+*.sqlite3
+
+# Data folder (if it contains large files)
+data/
+
+# IDE files
+.vscode/
+
+# Mac system files
+.DS_Store
