@@ -1,60 +1,42 @@
 import os
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_community.document_loaders import (
-    TextLoader, PyPDFLoader, CSVLoader, UnstructuredWordDocumentLoader, 
-    UnstructuredFileLoader)
 from langchain_openai import OpenAI
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 
-def load_documents_from_folder(folder_path):
-    all_docs=[]
-    for filename in os.listdir(folder_path):
-        path = os.path.join(folder_path,filename)
-        file_ext = os.path.splitext(filename)[1].lower()
-
-        try:
-            if file_ext == ".pdf":
-                loader = PyPDFLoader(path)
-            elif file_ext == ".txt":
-                loader = TextLoader(path)
-            elif file_ext == ".docx":
-                loader = UnstructuredWordDocumentLoader(path)
-            elif file_ext == ".csv":
-                loader = CSVLoader(path)
-            else:
-                loader = UnstructuredFileLoader(path)
-
-            docs = loader.load()
-            print(f"✅ Loaded {len(docs)} documents from {filename}")
-            all_docs.extend(loader.load())
-
-        except Exception as e:
-            print(f" Error processing {filename}: {e}")
-
-    return all_docs
+from core.loader_utils import load_documents_with_metadata, get_existing_hashes, filter_new_hashes
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
-    #Load and split docs
-    documents = load_documents_from_folder(folder_path)
-
-    if not documents:
-        raise ValueError(f'No documents found in {folder_path}')
-    
-    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(documents)
-
-    #Embed and store
+    #Initialise embeddings and persistent store
     embeddings = OpenAIEmbeddings(
         model='text-embedding-3-small',
-        api_key=openai_api_key)
-    vectordb = Chroma.from_documents(chunks, embeddings, persist_directory=persist_dir)
+        api_key=openai_api_key 
+    )
+    vectordb = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+
+    #Load docs with metadata
+    all_docs = load_documents_with_metadata(folder_path)
+
+    if not all_docs:
+        raise ValueError(f"No documents found in {folder_path}")
+    
+    #Filter out documents already in vector store
+    existing_hashes = get_existing_hashes(vectordb)
+    new_docs = filter_new_hashes(all_docs, existing_hashes)
+
+    if new_docs:
+        splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        chunks = splitter.split_documents(new_docs)
+        vectordb.add_documents(chunks)
+        print(f"Added {len(chunks)} new chunks to vector store")
+    else:
+        print("No new documents added")
 
     #Build retreiver
     retriever = vectordb.as_retriever()
