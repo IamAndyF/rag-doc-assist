@@ -20,13 +20,3 @@ if query:
     st.markdown("Answer:")
     st.write(result)
 
-    #Show sources
-    st.markdown("Sources Used:")
-    if result["docs"]:
-        for i, doc in enumerate(result["docs"], 1):
-            filename = doc.metadata.get("filename", "Unknown file")
-            snippet = doc.page_content[:300].strip().replace("\n", " ")
-            st.markdown(f"**{i}. {filename}**")
-            st.markdown(f"> {snippet}...")
-    else:
-        st.write("No source documents returned")
