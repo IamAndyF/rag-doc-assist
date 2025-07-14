@@ -44,7 +44,8 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
     #Create template
     prompt = PromptTemplate.from_template(
         "Answer the question based only on the context below:\n\n{context}\n\nQuestion: {question}"
-    )
+        "Be concise with the answer"
+    )   
 
     #LLM
     llm = OpenAI(
@@ -58,6 +59,9 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
             "context": retriever | format_docs,
             "question": RunnablePassthrough()
         })
+        | prompt
+        | llm
+        | StrOutputParser()
     )
 
     return rag_chain

@@ -37,7 +37,7 @@ def load_documents_with_metadata(folder_path):
                 doc.metadata["file_hash"] = file_hash
 
             print(f"✅ Loaded {len(docs)} documents from {filename}")
-            all_docs.extend(loader.load())
+            all_docs.extend(docs)
 
         except Exception as e:
             print(f" Error processing {filename}: {e}")
