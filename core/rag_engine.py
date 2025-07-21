@@ -20,8 +20,11 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
     )
     vectordb = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
 
+    # Llm loader agent
+    llm_for_loader = OpenAI(api_key=openai_api_key, model_name='gpt-4o-mini', temperature=0)
+
     #Load docs with metadata
-    all_docs = load_documents_with_metadata(folder_path)
+    all_docs = load_documents_with_metadata(folder_path, llm_for_loader)
 
     if not all_docs:
         raise ValueError(f"No documents found in {folder_path}")
@@ -31,7 +34,7 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
     new_docs = filter_new_hashes(all_docs, existing_hashes)
 
     if new_docs:
-        splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=80)
         chunks = splitter.split_documents(new_docs)
         vectordb.add_documents(chunks)
         print(f"Added {len(chunks)} new chunks to vector store")

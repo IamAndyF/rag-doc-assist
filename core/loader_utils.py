@@ -3,35 +3,51 @@ import hashlib
 from langchain_community.document_loaders import (
     TextLoader, PyPDFLoader, CSVLoader, UnstructuredWordDocumentLoader, 
     UnstructuredFileLoader)
+from langchain.prompts import PromptTemplate
+
+from core.ai_agents import loader_agent
+
+loader_mapping = {
+    "PyPDFLoader": PyPDFLoader,
+    "TextLoader": TextLoader,
+    "CSVLoader": CSVLoader,
+    "UnstructuredWordDocumentLoader": UnstructuredWordDocumentLoader,
+    "UnstructuredFileLoader": UnstructuredFileLoader  #Fallback file loader
+}
 
 def hash_file(path):
     #Return an MDS hash of a file
     with open(path, "rb") as f:
         return hashlib.md5(f.read()).hexdigest()
-
-def load_documents_with_metadata(folder_path):
+    
+def load_documents_with_metadata(folder_path, llm):
     all_docs=[]
 
     for filename in os.listdir(folder_path):
         path = os.path.join(folder_path,filename)
-        file_ext = os.path.splitext(filename)[1].lower()
+        if not os.path.isfile(path):
+            continue
 
         try:
-            #Select loader based on file extension
-            if file_ext == ".pdf":
-                loader = PyPDFLoader(path)
-            elif file_ext == ".txt":
-                loader = TextLoader(path)
-            elif file_ext == ".docx":
-                loader = UnstructuredWordDocumentLoader(path)
-            elif file_ext == ".csv":
-                loader = CSVLoader(path)
-            else:
-                loader = UnstructuredFileLoader(path)
+            #Try to preview for text based files
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                preview = f.read(1000)
+        except Exception:
+            preview = "[binary or unreadable preview]"
+
+        try:
+            #Use loader ai agent to determine the file loader type
+            loader_name = loader_agent(filename, preview, llm)
+            loader_class = loader_mapping.get(loader_name, UnstructuredFileLoader)
+
+            if loader_name not in loader_mapping:
+                print(f"Unrecognised loader {loader_name}, defaulting to UnstructuredFileLoader")
             
             #Get file hash and load documents
+            loader =loader_class(path)
             file_hash = hash_file(path)
             docs = loader.load()
+            
             for doc in docs:
                 doc.metadata["filename"] = filename
                 doc.metadata["file_hash"] = file_hash
