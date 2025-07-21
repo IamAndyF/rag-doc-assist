@@ -2,7 +2,7 @@ import os
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAI
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import TokenTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
@@ -34,7 +34,7 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
     new_docs = filter_new_hashes(all_docs, existing_hashes)
 
     if new_docs:
-        splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=80)
+        splitter = TokenTextSplitter(chunk_size=800, chunk_overlap=100)
         chunks = splitter.split_documents(new_docs)
         vectordb.add_documents(chunks)
         print(f"Added {len(chunks)} new chunks to vector store")
