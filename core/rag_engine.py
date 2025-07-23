@@ -1,4 +1,5 @@
 import os
+import tiktoken
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAI
@@ -6,11 +7,25 @@ from langchain.text_splitter import TokenTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-
 from core.loader_utils import load_documents_with_metadata, get_existing_hashes, filter_new_hashes
 
-def format_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
+max_context_tokens = 1000
+
+def format_docs_token_limited(docs, model_name='gpt-4o-mini'):
+    encoding = tiktoken.encoding_for_model(model_name)
+    selected_texts = []
+    total_tokens = 0
+
+    for doc in docs:
+        text = doc.page_content
+        tokens = len(encoding.encode(text))
+        
+        if total_tokens + tokens > max_context_tokens:
+            break
+        selected_texts.append(text)
+        total_tokens += tokens
+
+    return "\n\n".join(selected_texts)
 
 def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
     #Initialise embeddings and persistent store
@@ -59,7 +74,7 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
     #Build RAG chain
     rag_chain = (
         RunnableParallel({
-            "context": retriever | format_docs,
+            "context": retriever | (lambda docs: format_docs_token_limited(docs, model_name='gpt-4o-mini')),
             "question": RunnablePassthrough()
         })
         | prompt
