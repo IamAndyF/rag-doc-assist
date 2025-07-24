@@ -7,6 +7,8 @@ from langchain.text_splitter import TokenTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
 from core.loader_utils import load_documents_with_metadata, get_existing_hashes, filter_new_hashes
 
 max_context_tokens = 1000
@@ -56,8 +58,21 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
     else:
         print("No new documents added")
 
+    #LLM
+    llm = OpenAI(
+        temperature=0, 
+        api_key=openai_api_key,
+        model_name='gpt-4o-mini')
+    
     #Build retreiver
-    retriever = vectordb.as_retriever()
+    base_retriever = vectordb.as_retriever()
+    compressor = LLMChainExtractor.from_llm(llm)
+
+    retriever = ContextualCompressionRetriever(
+        base_retriever=base_retriever,
+        document_compressor=compressor
+    )
+
 
     #Create template
     prompt = PromptTemplate.from_template(
@@ -65,11 +80,7 @@ def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
         "Be concise with the answer"
     )   
 
-    #LLM
-    llm = OpenAI(
-        temperature=0, 
-        api_key=openai_api_key,
-        model_name='gpt-4o-mini')
+    
 
     #Build RAG chain
     rag_chain = (
