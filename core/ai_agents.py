@@ -1,5 +1,6 @@
 import os
 from langchain.prompts import PromptTemplate
+from core.loaders import valid_loaders, extension_loader_map
 
 def loader_agent(filename, preview, llm): 
     #AI agent decides the best loader to use
@@ -30,7 +31,23 @@ def loader_agent(filename, preview, llm):
         extension=extension,
         preview=preview[:1000]
     )
+    
+    try:
+        response = llm.invoke(prompt)
+        loader_name = response.strip()
 
-    response = llm.invoke(prompt)
-    loader_name = response.strip()
-    return loader_name
+        # Validate the loader name
+        if loader_name not in valid_loaders:
+            print(f"Unrecognised loader {loader_name}, falling back to extentions mapping")
+            return get_fallback_loader(extension)
+
+        return loader_name
+    
+    except Exception as e: 
+        print(f'LLM error: {e}, using fallback loader')
+        return get_fallback_loader(extension)
+    
+def get_fallback_loader(extension):
+    # Fallback loader based on file extension, if not then default to UnstructuredFileLoader
+    return extension_loader_map.get(extension, "UnstructuredFileLoader")
+    

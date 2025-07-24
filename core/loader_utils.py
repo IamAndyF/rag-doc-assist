@@ -1,19 +1,11 @@
 import os
 import hashlib
-from langchain_community.document_loaders import (
-    TextLoader, PyPDFLoader, CSVLoader, UnstructuredWordDocumentLoader, 
-    UnstructuredFileLoader)
+from langchain_community.document_loaders import UnstructuredFileLoader
 from langchain.prompts import PromptTemplate
 
 from core.ai_agents import loader_agent
+from core.loaders import loader_mapping
 
-loader_mapping = {
-    "PyPDFLoader": PyPDFLoader,
-    "TextLoader": TextLoader,
-    "CSVLoader": CSVLoader,
-    "UnstructuredWordDocumentLoader": UnstructuredWordDocumentLoader,
-    "UnstructuredFileLoader": UnstructuredFileLoader  #Fallback file loader
-}
 
 def hash_file(path):
     #Return an MDS hash of a file
