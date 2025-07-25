@@ -1,15 +1,17 @@
 import streamlit as st
 from core.config import load_config
-from core.rag_engine import build_rag_engine
+from core.rag_engine import RAGEngine
 
 config = load_config()
 
+rag_engine = RAGEngine(
+    openai_api_key=config["openai_api_key"],
+    folder_path="/users/andyfung/ai/doc_assist/data",
+    persist_dir=config['persist_dir']
+)
+
 if "qa_chain" not in st.session_state:
-    st.session_state.qa_chain = build_rag_engine(
-        openai_api_key=config["openai_api_key"],
-        folder_path="/users/andyfung/ai/doc_assist/data",
-        persist_dir=config['persist_dir']
-    )
+    st.session_state.qa_chain = rag_engine.build_rag_chain()
 
 st.title("📄 Doc Assist — AI Knowledge Assistant")
 

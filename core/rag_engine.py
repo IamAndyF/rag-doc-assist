@@ -7,82 +7,85 @@ from langchain.text_splitter import TokenTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
-from core.loader_utils import load_documents_with_metadata, get_existing_hashes, filter_new_hashes
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
+from core.document_ingestor import DocumentIngestion
+from core.loader_manager import LoaderManager
+from core.loader_agent import LoaderAgent
+ 
 
-max_context_tokens = 1000
 
-def format_docs_token_limited(docs, model_name='gpt-4o-mini'):
-    encoding = tiktoken.encoding_for_model(model_name)
-    selected_texts = []
-    total_tokens = 0
+class RAGEngine:
+    def __init__(self, openai_api_key, folder_path, persist_dir="./chroma_store"):
+        self.openai_api_key = openai_api_key
+        self.folder_path = folder_path
+        self.persist_dir = persist_dir
+        self.llm = OpenAI(temperature=0, api_key=openai_api_key, model_name='gpt-4o-mini')
 
-    for doc in docs:
-        text = doc.page_content
-        tokens = len(encoding.encode(text))
+    def format_docs_token_limited(self, docs, model_name='gpt-4o-mini', max_context_tokens=1000):
+        encoding = tiktoken.encoding_for_model(model_name)
+        selected_texts = []
+        total_tokens = 0
+
+        for doc in docs:
+            text = doc.page_content
+            tokens = len(encoding.encode(text))
+            
+            if total_tokens + tokens > max_context_tokens:
+                break
+            selected_texts.append(text)
+            total_tokens += tokens
+
+        return "\n\n".join(selected_texts)
+
+    def build_rag_chain(self):
+        #Initialise embeddings and persistent store
+        embeddings = OpenAIEmbeddings(model='text-embedding-3-small', api_key=self.openai_api_key )
+        vectordb = Chroma(persist_directory=self.persist_dir, embedding_function=embeddings)
+
+        loader_agent = LoaderAgent(
+            llm = self.llm,
+            valid_loaders = LoaderManager.valid_loaders,
+            extension_loader_map = LoaderManager.extension_loader_map  
+        )
+
+        ingestor = DocumentIngestion(
+            self.folder_path,
+            loader_agent,
+            vectordb
+        )
+
+        #Load existing documents and filter new ones
+        new_docs = ingestor.ingest_new_documents()
+
+        if new_docs:
+            chunks = TokenTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(new_docs)
+            vectordb.add_documents(chunks)
+            print(f"Added {len(chunks)} new chunks to vector store")
+        else:
+            print("No new documents added")
         
-        if total_tokens + tokens > max_context_tokens:
-            break
-        selected_texts.append(text)
-        total_tokens += tokens
+        #Build retreiver
+        retriever = ContextualCompressionRetriever(
+            base_retriever=vectordb.as_retriever(),
+            base_compressor= LLMChainExtractor.from_llm(self.llm)
+        )
 
-    return "\n\n".join(selected_texts)
+        #Create template
+        prompt = PromptTemplate.from_template(
+            "Answer the question based only on the context below:\n\n{context}\n\nQuestion: {question}"
+            "Be concise with the answer"
+        )   
 
-def build_rag_engine(openai_api_key, folder_path, persist_dir="./chroma_store"):
-    #Initialise embeddings and persistent store
-    embeddings = OpenAIEmbeddings(
-        model='text-embedding-3-small',
-        api_key=openai_api_key 
-    )
-    vectordb = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+        #RAG chain
+        rag_chain = (
+            RunnableParallel({
+                "context": retriever | (lambda docs: self.format_docs_token_limited(docs)),
+                "question": RunnablePassthrough()
+            })
+            | prompt
+            | self.llm
+            | StrOutputParser()
+        )
 
-    # Llm loader agent
-    llm_for_loader = OpenAI(api_key=openai_api_key, model_name='gpt-4o-mini', temperature=0)
-
-    #Load docs with metadata
-    all_docs = load_documents_with_metadata(folder_path, llm_for_loader)
-
-    if not all_docs:
-        raise ValueError(f"No documents found in {folder_path}")
-    
-    #Filter out documents already in vector store
-    existing_hashes = get_existing_hashes(vectordb)
-    new_docs = filter_new_hashes(all_docs, existing_hashes)
-
-    if new_docs:
-        splitter = TokenTextSplitter(chunk_size=800, chunk_overlap=100)
-        chunks = splitter.split_documents(new_docs)
-        vectordb.add_documents(chunks)
-        print(f"Added {len(chunks)} new chunks to vector store")
-    else:
-        print("No new documents added")
-
-    #Build retreiver
-    retriever = vectordb.as_retriever()
-
-    #Create template
-    prompt = PromptTemplate.from_template(
-        "Answer the question based only on the context below:\n\n{context}\n\nQuestion: {question}"
-        "Be concise with the answer"
-    )   
-
-    #LLM
-    llm = OpenAI(
-        temperature=0, 
-        api_key=openai_api_key,
-        model_name='gpt-4o-mini')
-
-    #Build RAG chain
-    rag_chain = (
-        RunnableParallel({
-            "context": retriever | (lambda docs: format_docs_token_limited(docs, model_name='gpt-4o-mini')),
-            "question": RunnablePassthrough()
-        })
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-
-    return rag_chain
-
-
-
+        return rag_chain
