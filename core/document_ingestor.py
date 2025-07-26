@@ -3,6 +3,10 @@ import hashlib
 from langchain_community.document_loaders import UnstructuredFileLoader
 from core.loader_manager import LoaderManager
 
+from logger import setup_logger
+logger = setup_logger(__name__)
+
+
 class DocumentIngestion:
     def __init__(self, folder_path, loader_agent, vectorstore):
         self.folder_path = folder_path
@@ -36,10 +40,10 @@ class DocumentIngestion:
                     doc.metadata["file_hash"] = file_hash
 
                 all_docs.extend(docs)
-                print(f"✅ Loaded {len(docs)} documents from {filename}")
+                logger.info(f"Loaded {len(docs)} documents from {filename}")
                 
             except Exception as e:
-                print(f" Error processing {filename}: {e}")
+                logger.warning(f" Error processing {filename}: {e}")
 
         return all_docs
     
@@ -48,7 +52,7 @@ class DocumentIngestion:
             with open(path, "r", encoding='utf-8', errors='ignore') as f:
                 return f.read(1000)
         except Exception as e:
-            print(f"Failed to read preview for {path}: {e}")
+            logger.info(f"Failed to read preview for {path}: {e}")
             return "[unreadable preview]"
     
     def hash_file(self, path):
@@ -62,7 +66,7 @@ class DocumentIngestion:
             existing = self.vectorstore.get(include=["metadatas"])
             return {meta["file_hash"] for meta in existing["metadatas"] if "file_hash" in meta}
         except Exception as e:
-            print(f"Failed to get existing hashes: {e}")
+            logger.info(f"Failed to get existing hashes: {e}")
             return set()
         
     def filter_new_hashes(self, all_docs, existing_hashes):

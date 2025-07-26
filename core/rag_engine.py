@@ -12,7 +12,9 @@ from langchain.retrievers.document_compressors import LLMChainExtractor
 from core.document_ingestor import DocumentIngestion
 from core.loader_manager import LoaderManager
 from core.loader_agent import LoaderAgent
- 
+
+from logger import setup_logger
+logger = setup_logger(__name__)
 
 
 class RAGEngine:
@@ -61,9 +63,9 @@ class RAGEngine:
         if new_docs:
             chunks = TokenTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(new_docs)
             vectordb.add_documents(chunks)
-            print(f"Added {len(chunks)} new chunks to vector store")
+            logger.info(f"Added {len(chunks)} new chunks to vector store")
         else:
-            print("No new documents added")
+            logger.info("No new documents added")
         
         #Build retreiver
         retriever = ContextualCompressionRetriever(

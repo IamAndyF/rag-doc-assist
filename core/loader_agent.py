@@ -2,6 +2,10 @@ import os
 from langchain.prompts import PromptTemplate
 from core.loader_manager import LoaderManager
 
+from logger import setup_logger
+logger = setup_logger(__name__)
+
+
 class LoaderAgent:
     def __init__(self, llm, valid_loaders, extension_loader_map):
         self.llm = llm
@@ -43,16 +47,17 @@ class LoaderAgent:
 
             # Validate the loader name
             if loader_name not in self.valid_loaders:
-                print(f"Unrecognised loader {loader_name}, falling back to extentions mapping")
+                logger.info(f"Unrecognised loader {loader_name}, falling back to extentions mapping")
                 return self.get_fallback_loader(extension)
 
             return loader_name
         
         except Exception as e: 
-            print(f'LLM error: {e}, using fallback loader')
+            logger.warning(f'LLM error: {e}, using fallback loader')
             return self.get_fallback_loader(extension)
         
     def get_fallback_loader(self, extension):
         # Fallback loader based on file extension, if not then default to UnstructuredFileLoader
+        logger.info(f"Using fallback loader for extension {extension}")
         return LoaderManager.get_loader_by_extension(extension)
         

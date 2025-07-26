@@ -1,6 +1,9 @@
 import os
 from dotenv import load_dotenv
 
+from logger import setup_logger
+logger = setup_logger(__name__)
+
 def load_config():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(current_dir)
@@ -9,9 +12,9 @@ def load_config():
     openai_key = os.getenv("OPENAI_API_KEY")
 
     if openai_key:
-        print(f"✅ Loaded OPENAI_API_KEY")
+        logger.info(f"Loaded OPENAI_API_KEY")
     else:
-        print("❌ OPENAI_API_KEY not found in environment.")
+        logger.info("OPENAI_API_KEY not found in environment.")
 
     return {
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
