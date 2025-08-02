@@ -1,22 +1,12 @@
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-from logger import setup_logger
-logger = setup_logger(__name__)
 
-def load_config():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(current_dir)
-    env_path = os.path.join(parent_dir, '.env')
-    load_dotenv(env_path)
-    openai_key = os.getenv("OPENAI_API_KEY")
-
-    if openai_key:
-        logger.info(f"Loaded OPENAI_API_KEY")
-    else:
-        logger.info("OPENAI_API_KEY not found in environment.")
-
-    return {
-        "openai_api_key": os.getenv("OPENAI_API_KEY"),
-        "persist_dir": "./chroma_store"
-    }
+load_dotenv(find_dotenv())
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PERSIST_DIR = os.getenv("PERSIST_DIR", "./chroma_store")
+DATA_FOLDER = os.getenv("DATA_FOLDER", "./data")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 200))

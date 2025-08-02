@@ -1,16 +1,16 @@
 import os
 from langchain.prompts import PromptTemplate
 from core.loader_manager import LoaderManager
-
+from core.llm_client import LLMClient
 from logger import setup_logger
 logger = setup_logger(__name__)
 
 
 class LoaderAgent:
-    def __init__(self, llm, valid_loaders, extension_loader_map):
-        self.llm = llm
-        self.valid_loaders = valid_loaders
-        self.extension_loader_map = extension_loader_map
+    def __init__(self, llm_client: LLMClient):
+        self.llm_client = llm_client
+        self.valid_loaders = LoaderManager.valid_loaders
+        self.extension_loader_map = LoaderManager.extension_loader_map
 
         self.prompt_template = PromptTemplate.from_template(
             """You are an intelligent assistant that selects the best document loader for a file based on its filename, file extension, and a preview of its contents (if readable).
@@ -42,7 +42,7 @@ class LoaderAgent:
         )
         
         try:
-            response = self.llm.invoke(prompt)
+            response = self.llm_client.query(prompt)
             loader_name = response.strip()
 
             # Validate the loader name

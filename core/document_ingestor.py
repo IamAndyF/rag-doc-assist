@@ -1,7 +1,7 @@
 import os
-import hashlib
 from langchain_community.document_loaders import UnstructuredFileLoader
 from core.loader_manager import LoaderManager
+from core.utils import hash_file, get_preview
 
 from logger import setup_logger
 logger = setup_logger(__name__)
@@ -26,13 +26,13 @@ class DocumentIngestion:
             if not os.path.isfile(path):
                 continue
 
-            preview = self.get_preview(path)
+            preview = get_preview(path)
             loader_name = self.loader_agent.choose_loader(filename, preview)
             loader_class = LoaderManager.loader_mapping.get(loader_name, UnstructuredFileLoader)
 
             try:
                 loader =loader_class(path)
-                file_hash = self.hash_file(path)
+                file_hash = hash_file(path)
                 docs = loader.load()
                 
                 for doc in docs:
@@ -46,19 +46,6 @@ class DocumentIngestion:
                 logger.warning(f" Error processing {filename}: {e}")
 
         return all_docs
-    
-    def get_preview(self, path):
-        try:
-            with open(path, "r", encoding='utf-8', errors='ignore') as f:
-                return f.read(1000)
-        except Exception as e:
-            logger.info(f"Failed to read preview for {path}: {e}")
-            return "[unreadable preview]"
-    
-    def hash_file(self, path):
-        #Return an MDS hash of a file
-        with open(path, "rb") as f:
-            return hashlib.md5(f.read()).hexdigest()
 
     def get_existing_hashes(self):
         #Extract existing file hashs from vector store metadata

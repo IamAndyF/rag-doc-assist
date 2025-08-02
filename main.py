@@ -1,13 +1,15 @@
 import streamlit as st
-from core.config import load_config
 from core.rag_engine import RAGEngine
-
-config = load_config()
+from core.config import OPENAI_API_KEY, PERSIST_DIR, DATA_FOLDER, CHUNK_SIZE, CHUNK_OVERLAP, MODEL_NAME, EMBEDDING_MODEL
 
 rag_engine = RAGEngine(
-    openai_api_key=config["openai_api_key"],
-    folder_path="/users/andyfung/ai/doc_assist/data",
-    persist_dir=config['persist_dir']
+    api_key=OPENAI_API_KEY,
+    persist_dir=PERSIST_DIR,
+    folder_path=DATA_FOLDER,
+    chunk_size=CHUNK_SIZE,
+    chunk_overlap=CHUNK_OVERLAP,
+    model=MODEL_NAME,
+    embedding_model=EMBEDDING_MODEL
 )
 
 if "qa_chain" not in st.session_state:
