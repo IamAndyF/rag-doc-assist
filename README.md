@@ -1,31 +1,24 @@
-🧠 rag-doc-assist: Retrieval-Augmented Generation (RAG) Knowledge Assistant
+Retrieval-Augmented Generation (RAG) Knowledge Assistant
 
-Overview
+A simple yet scalable prototype for a RAG-based document Q&A assistant using OpenAI models and Chroma vector store.
 
-rag-doc-assist is an AI-powered knowledge assistant that allows you to query your own documents using the power of large language models. It leverages Retrieval-Augmented Generation (RAG) to provide concise, context-aware answers from documents stored in a local folder.
+core/
+  ├── rag_engine.py         # RAG pipeline logic
+  ├── document_ingestor.py  # Ingestion & deduplication
+  ├── loader_agent.py       # LLM-based loader selector
+  ├── loader_manager.py     # Fallback loader map
+  ├── llm_client.py         # LLM wrapper
+utils/
+  ├── hashing_utils.py      # File preview & hashing
+app/
+  ├── app.py                # Streamlit frontend
+.env                        # Config
 
-This project uses LangChain, OpenAI, and Chroma for vector storage, along with an intelligent AI agent that automatically selects the appropriate loader for each document based on its content.
+To run, install dependencies from requirements.txt
 
-✨ Features
+Setup .env file with openai_key or equivalent: 
+OPENAI_API_KEY=your-openai-key
 
-✅ Drop-in folder-based document ingestion
+To run use: streamlit run main.py
 
-✅ AI agent intelligently determines document type and chooses optimal loader (PDF, TXT, DOCX, etc.)
 
-✅ Deduplication and vectorization via OpenAIEmbeddings
-
-✅ Token-based document chunking
-
-✅ Customizable prompt templates for querying
-
-✅ Built with Streamlit for interactive use
-
-🧱 Architecture
-
-Loader Agent: Uses an LLM to preview document content and select the best LangChain loader
-
-Embedding & Vector Store: Uses OpenAIEmbeddings and Chroma
-
-Chunking: Token-based chunking with overlap for coherent retrieval
-
-RAG Flow: Vector database returns top relevant chunks -> fed into LLM via prompt -> generated answer

@@ -22,5 +22,9 @@ query = st.text_input("Ask a question based on internal documents:")
 if query:
     result = st.session_state.qa_chain.invoke(query)
     st.markdown("Answer:")
-    st.write(result)
+    st.write(result.answer)
+    st.write("Sources:")
+    for s in result.sources:
+        st.write(f"-{s}")
+
 

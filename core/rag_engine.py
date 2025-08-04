@@ -1,4 +1,3 @@
-import os
 import tiktoken
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -6,13 +5,14 @@ from langchain_openai import OpenAI
 from langchain.text_splitter import TokenTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableParallel
+from langchain_core.runnables import RunnablePassthrough, RunnableParallel, RunnableLambda
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from core.document_ingestor import DocumentIngestion
 from core.loader_manager import LoaderManager
 from core.loader_agent import LoaderAgent
 from core.llm_client import LLMClient
+from collections import namedtuple
 
 from logger import setup_logger
 logger = setup_logger(__name__)
@@ -53,11 +53,7 @@ class RAGEngine:
 
         loader_agent = LoaderAgent(self.llm_client)
 
-        ingestor = DocumentIngestion(
-            self.folder_path,
-            loader_agent,
-            vectordb
-        )
+        ingestor = DocumentIngestion(self.folder_path,loader_agent,vectordb)
 
         #Load existing documents and filter new ones
         new_docs = ingestor.ingest_new_documents()
@@ -79,17 +75,40 @@ class RAGEngine:
         prompt = PromptTemplate.from_template(
             "Answer the question based only on the context below:\n\n{context}\n\nQuestion: {question}"
             "Be concise with the answer"
-        )   
+        )  
 
         #RAG chain
         rag_chain = (
             RunnableParallel({
-                "context": retriever | (lambda docs: self.format_docs_token_limited(docs)),
-                "question": RunnablePassthrough()
-            })
-            | prompt
-            | self.llm
-            | StrOutputParser()
+                "question": RunnablePassthrough(),
+                "docs": retriever
+            }) |
+            RunnableLambda(lambda x: self.generate_answer_and_sources(x["question"], x["docs"], prompt))
         )
 
+        # With no sources just a direct asnwer use this
+        # rag_chain = (
+        #     RunnableParallel({
+        #         "context": retriever | (lambda docs: self.format_docs_token_limited(docs)),
+        #         "question": RunnablePassthrough()
+        #     })
+        #     | prompt
+        #     | self.llm
+        #     | StrOutputParser()
+        # )
+
         return rag_chain
+    
+    
+    def generate_answer_and_sources(self, question, docs, prompt_template):
+        AnswerResult = namedtuple('AnswerResult', ['answer', 'sources'])
+        context = self.format_docs_token_limited(docs)
+        prompt = prompt_template.format(context=context, question=question)
+        answer = self.llm.invoke(prompt)
+        sources = [doc.metadata.get("filename", "Unknown") for doc in docs]
+        return AnswerResult(answer.strip(), list(set(sources)))
+    
+    
+
+      
+
