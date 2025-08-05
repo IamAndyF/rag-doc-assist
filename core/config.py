@@ -12,4 +12,17 @@ CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 200))
 
 
+class DatabaseConfig:
+    def __init__(self):
+    # Configuration for the database connection
+        self.host = os.getenv("DB_HOST", "localhost")
+        self.port= os.getenv("DB_PORT", "5432")
+        self.dbname = os.getenv("DB_NAME", "tradeall")
+        self.user = os.getenv("DB_USER", "")
+        self.password = os.getenv("DB_PASSWORD", "")
+
+    @property
+    def connection_string(self):
+        return f"dbname='{self.dbname}' user='{self.user}' host='{self.host}' port='{self.port}' password='{self.password}'"
     
+DATABASE_URL = DatabaseConfig().connection_string
