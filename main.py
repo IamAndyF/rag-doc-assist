@@ -56,7 +56,7 @@ if "qa_chain" not in st.session_state:
 
 st.subheader("Query search")
 mode = st.radio("Select mode:", ["Document", "Database"], horizontal=True)
-query = st.text_input("Ask a question based on internal documents:")
+query = st.text_input("Ask a question", placeholder="Ask a question based on internal documents:")
 
 if query:
     with st.spinner("Retrieving answer..."):
