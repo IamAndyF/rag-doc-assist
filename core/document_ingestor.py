@@ -1,10 +1,10 @@
 import os
-from langchain_community.document_loaders import UnstructuredFileLoader
-from core.loader_manager import LoaderManager
-from core.utils import hash_file, get_preview
 
-from logger import setup_logger
-logger = setup_logger(__name__)
+from langchain_community.document_loaders import UnstructuredFileLoader
+
+from core.loader_manager import LoaderManager
+from core.utils import get_preview, hash_file
+from logger import logger
 
 
 class DocumentIngestion:
@@ -17,46 +17,55 @@ class DocumentIngestion:
         all_docs = self.load_documents_with_metadata()
         existing_hashes = self.get_existing_hashes()
         return self.filter_new_hashes(all_docs, existing_hashes)
-      
+
     def load_documents_with_metadata(self):
-        all_docs=[]
+        all_docs = []
 
         for filename in os.listdir(self.folder_path):
-            path = os.path.join(self.folder_path,filename)
+            path = os.path.join(self.folder_path, filename)
             if not os.path.isfile(path):
                 continue
 
             preview = get_preview(path)
             loader_name = self.loader_agent.choose_loader(filename, preview)
-            loader_class = LoaderManager.loader_mapping.get(loader_name, UnstructuredFileLoader)
+            loader_class = LoaderManager.loader_mapping.get(
+                loader_name, UnstructuredFileLoader
+            )
 
             try:
-                loader =loader_class(path)
+                loader = loader_class(path)
                 file_hash = hash_file(path)
                 docs = loader.load()
-                
+
                 for doc in docs:
                     doc.metadata["filename"] = filename
                     doc.metadata["file_hash"] = file_hash
 
                 all_docs.extend(docs)
                 logger.info(f"Loaded {len(docs)} documents from {filename}")
-                
+
             except Exception as e:
                 logger.warning(f" Error processing {filename}: {e}")
 
         return all_docs
 
     def get_existing_hashes(self):
-        #Extract existing file hashs from vector store metadata
+        # Extract existing file hashs from vector store metadata
         try:
             existing = self.vectorstore.get(include=["metadatas"])
-            return {meta["file_hash"] for meta in existing["metadatas"] if "file_hash" in meta}
+            return {
+                meta["file_hash"]
+                for meta in existing["metadatas"]
+                if "file_hash" in meta
+            }
         except Exception as e:
             logger.info(f"Failed to get existing hashes: {e}")
             return set()
-        
+
     def filter_new_hashes(self, all_docs, existing_hashes):
-        #Filter out hashes that already exist in vector store
-        return [doc for doc in all_docs if doc.metadata.get("file_hash") not in existing_hashes]
-        
+        # Filter out hashes that already exist in vector store
+        return [
+            doc
+            for doc in all_docs
+            if doc.metadata.get("file_hash") not in existing_hashes
+        ]

@@ -1,9 +1,10 @@
 import os
+
 from langchain.prompts import PromptTemplate
-from core.loader_manager import LoaderManager
+
 from core.llm_client import LLMClient
-from logger import setup_logger
-logger = setup_logger(__name__)
+from core.loader_manager import LoaderManager
+from logger import logger
 
 
 class LoaderAgent:
@@ -34,30 +35,29 @@ class LoaderAgent:
 
     def choose_loader(self, filename, preview):
         extension = os.path.splitext(filename)[1].lower()
-        
+
         prompt = self.prompt_template.format(
-            filename=filename,
-            extension=extension,
-            preview=preview[:1000]
+            filename=filename, extension=extension, preview=preview[:1000]
         )
-        
+
         try:
             response = self.llm_client.query(prompt)
             loader_name = response.strip()
 
             # Validate the loader name
             if loader_name not in self.valid_loaders:
-                logger.info(f"Unrecognised loader {loader_name}, falling back to extentions mapping")
+                logger.info(
+                    f"Unrecognised loader {loader_name}, falling back to extentions mapping"
+                )
                 return self.get_fallback_loader(extension)
 
             return loader_name
-        
-        except Exception as e: 
-            logger.warning(f'LLM error: {e}, using fallback loader')
+
+        except Exception as e:
+            logger.warning(f"LLM error: {e}, using fallback loader")
             return self.get_fallback_loader(extension)
-        
+
     def get_fallback_loader(self, extension):
         # Fallback loader based on file extension, if not then default to UnstructuredFileLoader
         logger.info(f"Using fallback loader for extension {extension}")
         return LoaderManager.get_loader_by_extension(extension)
-        

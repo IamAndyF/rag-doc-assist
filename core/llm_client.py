@@ -1,7 +1,7 @@
 from langchain_core.language_models import BaseLanguageModel
-from logger import setup_logger
 
-logger = setup_logger(__name__)
+from logger import logger
+
 
 class LLMClient:
     def __init__(self, model: BaseLanguageModel):
@@ -14,5 +14,3 @@ class LLMClient:
         except Exception as e:
             logger.error(f"LLM query failed: {e}")
             raise
-        
-

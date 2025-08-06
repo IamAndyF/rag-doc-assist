@@ -1,6 +1,6 @@
 import os
-from dotenv import load_dotenv, find_dotenv
 
+from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv())
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -14,9 +14,9 @@ CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 200))
 
 class DatabaseConfig:
     def __init__(self):
-    # Configuration for the database connection
+        # Configuration for the database connection
         self.host = os.getenv("DB_HOST", "localhost")
-        self.port= os.getenv("DB_PORT", "5432")
+        self.port = os.getenv("DB_PORT", "5432")
         self.dbname = os.getenv("DB_NAME", "tradeall")
         self.user = os.getenv("DB_USER", "")
         self.password = os.getenv("DB_PASSWORD", "")
@@ -24,5 +24,6 @@ class DatabaseConfig:
     @property
     def connection_string(self):
         return f"dbname='{self.dbname}' user='{self.user}' host='{self.host}' port='{self.port}' password='{self.password}'"
-    
+
+
 DATABASE_URL = DatabaseConfig().connection_string
