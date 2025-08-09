@@ -15,7 +15,7 @@ from core.rag_engine import LLMClient, RAGEngine
 from core.sql_agent import SQLAgent
 
 # Set streamlit page config
-st.set_page_config(page_title="Doc Assist", layout="wide")
+st.set_page_config(page_title="Doc Assist", layout="centered")
 st.title("Doc Assist - AI Knowledge Assistant")
 
 
@@ -66,9 +66,9 @@ with st.sidebar:
                 f.write(file.getbuffer())
                 st.success(f"Uploaded {file.name} successfully!")
 
-        if st.button("Ingest documents"):
-            with st.spinner("Processing uploaded documents..."):
-                rag_engine.ingest_new_documents()
+        # if st.button("Ingest documents"):
+        #     with st.spinner("Processing uploaded documents..."):
+        #         rag_engine.ingest_new_documents()
 
 
 # RAG chain initialisation
