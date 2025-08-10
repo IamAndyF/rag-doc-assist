@@ -11,6 +11,7 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 200))
+CACHE_PATH = os.getenv("CACHE_PATH", "./pkl")
 
 
 class DatabaseConfig:

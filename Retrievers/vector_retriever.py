@@ -11,7 +11,7 @@ class VectorRetriever:
         )
 
     def get_vector_retriever(self):
-        return self.vectorstore.asretriever()
+        return self.vectorstore.as_retriever()
 
     def get_embedddings(self):
         return self.embeddings

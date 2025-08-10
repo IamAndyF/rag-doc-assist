@@ -10,6 +10,7 @@ from core.config import (
     MODEL_NAME,
     OPENAI_API_KEY,
     PERSIST_DIR,
+    CACHE_PATH
 )
 from core.rag_engine import LLMClient, RAGEngine
 from core.sql_agent import SQLAgent
@@ -30,6 +31,7 @@ def get_rag_engine():
         chunk_overlap=CHUNK_OVERLAP,
         model=MODEL_NAME,
         embedding_model=EMBEDDING_MODEL,
+        cache_path=CACHE_PATH
     )
 
 
@@ -66,10 +68,6 @@ with st.sidebar:
                 f.write(file.getbuffer())
                 st.success(f"Uploaded {file.name} successfully!")
 
-        # if st.button("Ingest documents"):
-        #     with st.spinner("Processing uploaded documents..."):
-        #         rag_engine.ingest_new_documents()
-
 
 # RAG chain initialisation
 if "qa_chain" not in st.session_state:
@@ -89,10 +87,7 @@ if submitted and query.strip():
         if mode == "Document":
             result = st.session_state.qa_chain.invoke(query)
             st.markdown("Answer:")
-            st.write(result.answer)
-            st.write("Sources:")
-            for s in result.sources:
-                st.write(f"-{s}")
+            st.write(result)
         else:  # Database mode
             result = st.session_state.sql_agent.run_query(query)
             st.markdown("Answer:")

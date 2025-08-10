@@ -14,10 +14,11 @@ from core.document_ingestor import DocumentIngestion
 from core.llm_client import LLMClient
 from core.loader_agent import LoaderAgent
 from logger import logger
-from Retrievers.bm25_retriever import myBM25Retriever
+from Retrievers.bm25_retriever import build_bm25_retriever
 from Retrievers.ensemble_retriever import get_ensemble_retriever
 from Retrievers.reranker import RerankModel
 from Retrievers.vector_retriever import VectorRetriever
+from Retrievers.retriever_cache import load_retriever
 
 
 class RAGEngine:
@@ -28,6 +29,7 @@ class RAGEngine:
         folder_path,
         chunk_size,
         chunk_overlap,
+        cache_path,
         model="gpt-4o-mini",
         embedding_model="text-embedding-3-small",
         reranker_model="cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -40,6 +42,7 @@ class RAGEngine:
         self.persist_dir = persist_dir
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.cache_path = cache_path
         self.llm = OpenAI(temperature=0, api_key=self.api_key, model_name=self.model)
         self.llm_client = LLMClient(self.llm)
         self.vector_retriever = VectorRetriever(
@@ -51,7 +54,11 @@ class RAGEngine:
     def format_docs_token_limited(
         self, docs, model_name="gpt-4o-mini", max_context_tokens=1000
     ):
-        encoding = tiktoken.encoding_for_model(model_name)
+        try:
+            encoding = tiktoken.encoding_for_model(model_name)
+        except KeyError:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        
         selected_texts = []
         total_tokens = 0
 
@@ -91,11 +98,11 @@ class RAGEngine:
         all_docs = self._get_all_documents_for_bm25()
 
         if all_docs:
-            bm25_retriever = myBM25Retriever(docs=all_docs, k=5).get_bm25_retriever()
+            sparse_retriever = load_retriever(self.cache_path, build_bm25_retriever, all_docs, k=10)
             vector_retriever = vectordb.as_retriever()
 
             ensemble_retriever = get_ensemble_retriever(
-                dense_retriever=vector_retriever, sparse_retriever=bm25_retriever
+                dense_retriever=vector_retriever, sparse_retriever=sparse_retriever
             )
         else:
             logger.warning("No documents available for BM25 retriever")
@@ -105,8 +112,26 @@ class RAGEngine:
 
         # Create template
         prompt = PromptTemplate.from_template(
-            "Answer the question based only on the context below:\n\n{context}\n\nQuestion: {question}"
-            "Be concise with the answer"
+            """Answer the question based ONLY on the context below.
+            If the answer is not contained in the context, respond with "I don't know."
+
+            At the end of your answer, list ONLY the filenames from the context that you directly referenced or cited to support your answer.
+            Do NOT list files that were not used or referenced.
+            List each filename only once.
+
+            Context:
+            {context}
+
+            Question:
+            {question}
+
+            Format your response like this:
+            Answer: <answer text>
+            
+            Sources:
+            - filename1
+            - filename2
+            """
         )
 
         # RAG chain
@@ -121,7 +146,7 @@ class RAGEngine:
                 }
             )
             | RunnableLambda(
-                lambda x: self.generate_answer_and_sources(
+                lambda x: self.generate_answer(
                     x["question"], x["docs"], prompt
                 )
             )
@@ -129,13 +154,11 @@ class RAGEngine:
 
         return rag_chain
 
-    def generate_answer_and_sources(self, question, docs, prompt_template):
-        AnswerResult = namedtuple("AnswerResult", ["answer", "sources"])
+    def generate_answer(self, question, docs, prompt_template):
         context = self.format_docs_token_limited(docs)
         prompt = prompt_template.format(context=context, question=question)
-        answer = self.llm.invoke(prompt)
-        sources = [doc.metadata.get("filename", "Unknown") for doc in docs]
-        return AnswerResult(answer.strip(), list(set(sources)))
+        answer = self.llm.invoke(prompt).strip()
+        return answer
 
     def _get_all_documents_for_bm25(self):
         """Retrieve all document chunks for BM25 indexing"""
